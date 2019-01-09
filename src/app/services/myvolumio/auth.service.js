@@ -36,6 +36,21 @@ class AuthService {
     this.isUserBeingWatched = false;
     this.isSocketInitialized = false;
 
+    this.$rootScope.$on('socket:init', () => {
+      this.registerListeners();
+      this.socketDeferred.resolve();
+    });
+
+    this.$rootScope.$on('socket:disconnect', () => {
+      this.socketDeferred = this.$q.defer();
+      this.socketPromise = this.socketDeferred.promise;
+    });
+
+    this.$rootScope.$on('socket:reconnect', () => {
+      this.registerListeners();
+      this.socketDeferred.resolve();
+    });
+
     this.isDev = null;
 
     this.init();
@@ -78,7 +93,10 @@ class AuthService {
     this.isUserBeingWatched = true;
     this.$rootScope.$watch(() => this.angularFireService.dbUser, (user) => {
       this.user = user;
-      this.syncronizeWithBackend();
+      setTimeout(()=>{
+        this.syncronizeWithBackend();
+      },3000)
+
     });
   }
 
@@ -89,11 +107,14 @@ class AuthService {
     this.isSocketInitialized = true;
     this.socketDeferred = this.$q.defer();
     this.socketPromise = this.socketDeferred.promise;
+    this.registerListner();
 
     this.$rootScope.$on('socket:init', () => {
+      console.log('AAAASSSSSSSSSS')
       this.registerListner();
       this.socketDeferred.resolve();
     });
+
 
     this.$rootScope.$on('socket:disconnect', () => {
       this.socketDeferred = this.$q.defer();
@@ -106,17 +127,25 @@ class AuthService {
     });
   }
 
+  registerListner() {
+    console.log('register list')
+  }
+
   syncronizeWithBackend() {
+    console.log(this.socketService.isSocketAvalaible())
     if (!this.socketService.isSocketAvalaible()) {
       return;
     }
-    this.socketPromise.then(() => {
+    //this.socketPromise.then(() => {
+      console.log(this.isJustFeLogged)
+      console.log('AAAAAAA')
       if (this.isJustFeLogged) { //JUST LOGGED
         this.isJustFeLogged = false;
         this.sendUserTokenToBackend().then(() => {});
         return;
       }
       this.getMyVolumioStatus().then((status) => { //NEED SYNC
+        console.log(status)
         var loggedIn = status.loggedIn;
         var uid = status.uid;
         if (loggedIn === true) { //BE LOGGED
@@ -137,9 +166,9 @@ class AuthService {
           }
         }
       });
-    }).catch(error => {
-      this.modalService.openDefaultErrorModal(error);
-    });
+    //}).catch(error => {
+    //  this.modalService.openDefaultErrorModal(error);
+    //});
   }
 
   getMyVolumioStatus() {
@@ -159,6 +188,18 @@ class AuthService {
     });
 
     this.socketService.emit('getMyVolumioStatus');
+
+    this.socketService.on('pushMyVolumioToken', (data) => {
+      console.log('AAAAAA')
+      console.log(data)
+      if (data !== null && data.token !== null) {
+        this.loginWithToken(data.token);
+      }
+    });
+
+    this.$rootScope.$on('$destroy', () => {
+      this.socketService.off('pushMyVolumioToken');
+    });
 
     return getting.promise;
   }
@@ -441,11 +482,6 @@ class AuthService {
     return deleting.promise;
   }
 
-  registerListner() {
-    this.registerLogoutListener();
-    this.registerLoginListener();
-  }
-
   registerLogoutListener() {
     if (this.isSocketInitialized === false) {
       return;
@@ -460,21 +496,6 @@ class AuthService {
     });
   }
 
-  registerLoginListener() {
-    if (this.isSocketInitialized === false) {
-      return;
-    }
-
-    this.socketService.on('pushMyVolumioToken', (data) => {
-      if (data !== null && data.token !== null) {
-        this.loginWithToken(data.token);
-      }
-    });
-
-    this.$rootScope.$on('$destroy', () => {
-      this.socketService.off('pushMyVolumioToken');
-    });
-  }
 
   isSocialEnabled() {
     if (this.isValidDomainForSocialLogin(this.$location.host())) {
