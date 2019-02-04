@@ -31,6 +31,9 @@ class PlayerService {
 
     this.localVolume = 0;
     this.lastVolumeUpdateTime = -1000;
+    
+    this.volumeDelta = 10;          //
+    this.volumeDeltaCheck = true;   //
 
     this.init();
     $rootScope.$on('socket:init', () => {
@@ -189,11 +192,11 @@ class PlayerService {
   }
 
   set remoteVolume(volume) {
-    if (volume < 0) {
-      volume = 0;
-    } else if (volume > 100) {
-      volume = 100;
-    }
+      if (volume < 0) {
+        volume = 0;
+      } else if (volume > 100) {
+        volume = 100;
+      }
     this.$log.debug('volume', volume);
     this.socketService.emit('volume', volume);
   }
@@ -208,6 +211,20 @@ class PlayerService {
   set volume(volume){
     if(Date.now() - this.lastVolumeUpdateTime > 100 && this.localVolume !== volume){
       this.lastVolumeUpdateTime = Date.now();
+      if(this.volumeDeltaCheck)
+      {
+        if (volume < 0) {
+          volume = 0;
+        } else if (volume > 100) {
+          volume = 100;
+        }
+        else if (volume > this.localVolume + this.volumeDelta){
+          volume = this.localVolume + this.volumeDelta;
+        }
+        else if (volume < this.localVolume - this.volumeDelta){
+          volume = this.localVolume - this.volumeDelta;
+        }
+      }
       this.remoteVolume = volume;
     }
     this.localVolume = volume;
