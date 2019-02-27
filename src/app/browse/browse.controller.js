@@ -26,6 +26,9 @@ class BrowseController {
     });
 
     this.initController();
+    this.songlist = [];
+
+    this.availablechars = "abcdefghijklmnopqrstuvwxyz0123456789"
   }
 
   fetchLibrary(item, back = false) {
@@ -221,6 +224,7 @@ class BrowseController {
   }
 
   renderBrowseTable() {
+    this.songlist = []
     if (!this.browseService.lists) {
       return false;
     }
@@ -230,6 +234,8 @@ class BrowseController {
       var item=this.browseService.info;
 
       this.table = '';
+
+      this.table += `<div class="filterSideBar" id="filterSideBar"></div>`
 
       if(this.browseService.info) {
         this.table += `<div class="rowInfo">`;
@@ -289,8 +295,19 @@ class BrowseController {
 
         this.table += `<div class="listWrapper">`;
         list.items.forEach((item, itemIndex) => {
+
+          var firstLetter = "";
+          if(item.type === "folder")
+          {
+           firstLetter =item.title.charAt(0).toLowerCase();
+           this.table += this.setId(firstLetter);
+          }
+          else
+          {
+          this.table += `<div class="itemWrapper"><div class="itemTab">`
+          }
+
           //Print items
-          this.table += `<div class="itemWrapper"><div class="itemTab">`;
           if (item.icon || item.albumart) {
           this.table += `<div class="image" id="${item.active ? 'source-active': ''}"
               onclick="${angularThis}.clickListItemByIndex(${listIndex}, ${itemIndex})">`;
@@ -352,6 +369,16 @@ class BrowseController {
         browseTable.style.display = 'block';
         this.applyGridStyle();
         this.$rootScope.$broadcast('browseController:listRendered');
+
+        var container= angular.element("#filterSideBar")
+        for (var i = 0; i< this.songlist.length; i++)
+        {
+          container.append(`<a class="element"
+          id="bottone"
+          ng-if="browse.getlistLength() > 0"
+          onclick="${angularThis}.scrollTo('${this.songlist[i]}')"> ${this.songlist[i].toUpperCase()}
+          </a><br/>`)
+        }
       }, 50, false);
     }, 0);
   }
@@ -405,6 +432,48 @@ class BrowseController {
       if (this.browseService.breadcrumbs) {
         this.fetchLibrary({uri: this.browseService.breadcrumbs.uri}, true);
       }
+    }
+  }
+
+  setId(value)
+  {
+    if(this.songlist.includes(value))
+    {
+      return (`<div class="itemWrapper"><div class="itemTab">`)
+    }
+    else
+    {
+      if(this.availablechars.indexOf(value)>-1)
+      {
+      this.songlist.push(value);
+      return(`<div id="scrollto-${value}" class="itemWrapper"><div class="itemTab">`)
+      }
+      else
+      {
+        return (`<div class="itemWrapper"><div class="itemTab">`)
+      }
+    }
+  }
+
+  getlistLength()
+  {
+    return(this.songlist.length);
+  }
+
+  getsongListName(indice)
+  {
+    console.log("sono qui ciao")
+    return this.songlist[indice].name;
+  }
+
+  scrollTo(hash) {
+    console.log("sonoqua hash =", hash)
+    var element = angular.element('#scrollto-'+hash);
+    if(element.length > 0) {
+      var container = angular.element('#browseTablesWrapper');
+      container.scrollTop(0);
+      var scrolling = element.offset().top - container.offset().top;
+      container.animate({scrollTop: scrolling}, "fast");
     }
   }
 }
